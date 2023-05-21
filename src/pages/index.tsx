@@ -1,11 +1,15 @@
 import { SignIn, SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { type NextPage } from "next";
 import Head from "next/head";
+import { useState } from "react";
 
-import { api } from "~/utils/api";
+import { RouterOutputs, api } from "~/utils/api";
 
 const CreatePostWizard = () => {
   const { user } = useUser();
+  const [content, setContent] = useState<String>("");
+  const postThePost = api.post.add.useMutation();
+
   console.log(user);
   if (!user) {
     return <SignIn />;
@@ -21,13 +25,42 @@ const CreatePostWizard = () => {
       <input
         placeholder="What's on your mind?"
         className="ml-4 w-full bg-transparent"
+        onChange={(e) => setContent(e.target.value)}
       />
+      <button
+        onClick={() => {
+          postThePost.mutate({ postContent: content.toString() });
+        }}
+      >
+        post
+      </button>
+    </div>
+  );
+};
+
+type PostWithAuthor = RouterOutputs["post"]["getAll"][number];
+
+const PostView = ({ post, author }: PostWithAuthor) => {
+  return (
+    <div className="flex gap-3 border-b border-slate-400 p-4">
+      <img
+        className="h-10 w-10 rounded-full"
+        src={author.profileImageUrl}
+        alt="profile_image"
+      />
+      {/* <div key={post.id} className="border-b border-slate-400 p-8"> */}
+      <div className="flex flex-col">
+        <div className="flex text-slate-300">
+          <span>{`@${author.userName}`}</span> <span>1 hour ago</span>
+        </div>
+      </div>
+      <span>{post.content}</span>
+      {/* </div> */}
     </div>
   );
 };
 
 const Home: NextPage = () => {
-  // const hello = api.post.hello.useQuery({ text: "from tRPC" });
   const { data } = api.post.getAll.useQuery();
   const user = useUser();
 
@@ -44,10 +77,8 @@ const Home: NextPage = () => {
             {!user.isSignedIn ? <SignInButton /> : <CreatePostWizard />}
           </div>
           <div>
-            {data?.map((post) => (
-              <div key={post.id} className="border-b border-slate-400 p-8">
-                {post.content}
-              </div>
+            {data?.map((postData) => (
+              <PostView key={postData.post.id} {...postData} />
             ))}
           </div>
         </div>
